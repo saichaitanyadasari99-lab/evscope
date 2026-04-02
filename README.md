@@ -39,3 +39,12 @@ git push -u origin main
 - Streamlit Community Cloud
 - Render
 - Railway
+
+## Streamlit Community Cloud
+
+1. Push this project to GitHub.
+2. In Streamlit Cloud, click `New app`.
+3. Select repository: `saichaitanyadasari99-lab/evscope-streamlit-public`
+4. Branch: `main`
+5. Main file path: `app.py`
+6. Deploy.
