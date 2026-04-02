@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EVScope — EV Analytics Platform</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root { --transition: 0.3s ease; }
+
+[data-theme="dark"] {
+  --bg: #070b13;
+  --surface: #0d1220;
+  --surface2: #121826;
+  --surface3: #1a2235;
+  --border: #1e2a3a;
+  --accent: #00c2ff;
+  --accent2: #22d3a5;
+  --warn: #ffb700;
+  --danger: #ff4d6d;
+  --text: #dde8f5;
+  --text-muted: #4a6080;
+  --text-dim: #8a9fba;
+  --sidebar-bg: #08101c;
+  --plot-tc: #7a90aa;
+  --plot-gc: #151f2e;
+}
+[data-theme="light"] {
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --surface2: #f0f4f9;
+  --surface3: #e4eaf2;
+  --border: #cdd5e0;
+  --accent: #0062c4;
+  --accent2: #007f66;
+  --warn: #b56b00;
+  --danger: #c8192e;
+  --text: #0d1520;
+  --text-muted: #4a5a72;
+  --text-dim: #2e3f55;
+  --sidebar-bg: #1a2540;
+  --plot-tc: #3a4f66;
+  --plot-gc: #dde4ee;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; }
+
+body {
+  font-family: 'Oxanium', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  transition: background var(--transition), color var(--transition);
+}
+
+/* ─── SIDEBAR ─────────────────────────────────────────── */
+.sidebar {
+  width: 210px; min-width: 210px;
+  background: var(--sidebar-bg);
+  display: flex; flex-direction: column;
+  border-right: 1px solid rgba(255,255,255,0.04);
+}
+
+.logo-row {
+  padding: 17px 16px 13px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(0,194,255,0.3);
+}
+.logo-name { font-size: 1.05rem; font-weight: 700; color: #fff; letter-spacing: 1px; }
+.logo-ver {
+  margin-left: auto; font-size: 0.55rem; font-family: 'JetBrains Mono';
+  color: var(--accent); background: rgba(0,194,255,0.12);
+  border-radius: 4px; padding: 2px 5px;
+}
+
+.nav-group-label {
+  padding: 16px 16px 5px;
+  font-size: 0.56rem; letter-spacing: 2px;
+  text-transform: uppercase; color: rgba(120,150,180,0.6);
+}
+
+.nav-item {
+  display: flex; align-items: center;
+  padding: 9px 16px;
+  margin: 1px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem; color: #7a96b4;
+  transition: all 0.16s;
+  position: relative; user-select: none;
+}
+.nav-item:hover { background: rgba(255,255,255,0.05); color: #c8d8ee; }
+.nav-item.active {
+  background: rgba(0,194,255,0.1);
+  color: var(--accent);
+  font-weight: 600;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute; left: -8px; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 17px;
+  background: var(--accent); border-radius: 2px;
+}
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--danger); color: #fff;
+  font-size: 0.56rem; padding: 1px 5px; border-radius: 10px;
+  font-family: 'JetBrains Mono';
+  animation: pulse-badge 2s infinite;
+}
+@keyframes pulse-badge { 0%,100%{opacity:1} 50%{opacity:0.55} }
+
+.sidebar-foot {
+  margin-top: auto;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.6rem; color: #3a5070;
+  font-family: 'JetBrains Mono'; text-align: center; line-height: 1.7;
+}
+
+/* ─── APP SHELL ──────────────────────────────────────── */
+.app-shell { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+
+/* ─── TOPBAR ─────────────────────────────────────────── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 9px 18px;
+  display: flex; align-items: center; gap: 9px;
+  flex-shrink: 0;
+}
+.topbar-title { font-size: 0.86rem; font-weight: 600; white-space: nowrap; color: var(--text); }
+.topbar-sep { flex: 1; }
+
+.file-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text-dim); cursor: pointer;
+  font-size: 0.7rem; font-family: 'Oxanium';
+  transition: all 0.16s; white-space: nowrap;
+}
+.file-btn:hover { border-color: var(--accent); color: var(--accent); }
+.file-btn.loaded { border-color: var(--accent2); color: var(--accent2); background: rgba(34,211,165,0.06); }
+
+.parse-btn {
+  padding: 7px 17px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none; border-radius: 7px;
+  color: #fff; font-weight: 700; font-size: 0.74rem;
+  font-family: 'Oxanium'; letter-spacing: 0.5px;
+  cursor: pointer; transition: all 0.16s; white-space: nowrap;
+}
+.parse-btn:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,194,255,0.25); }
+
+.status-pill {
+  padding: 4px 9px; border-radius: 20px;
+  font-size: 0.6rem; font-family: 'JetBrains Mono';
+  border: 1px solid var(--border); color: var(--text-muted);
+  background: var(--surface2); white-space: nowrap;
+}
+.status-pill.ok   { border-color:var(--accent2); color:var(--accent2); background:rgba(34,211,165,0.07); }
+.status-pill.busy { border-color:var(--warn);    color:var(--warn);    background:rgba(255,183,0,0.07); }
+.status-pill.err  { border-color:var(--danger);  color:var(--danger);  background:rgba(255,77,109,0.07); }
+
+.theme-btn {
+  width:31px; height:31px; border-radius:7px;
+  border:1px solid var(--border); background:var(--surface2);
+  color:var(--text-dim); cursor:pointer; font-size:0.9rem;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.16s; flex-shrink:0;
+}
+.theme-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* Loaded-files strip */
+.files-strip {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 18px;
+  display: none; align-items: center; gap: 8px;
+  flex-wrap: wrap; flex-shrink: 0; min-height: 0;
+}
+.files-strip.visible { display: flex; }
+.files-strip-label {
+  font-size: 0.6rem; color: var(--text-muted);
+  font-family:'JetBrains Mono'; white-space:nowrap;
+}
+.file-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 20px;
+  border: 1px solid rgba(0,194,255,0.25);
+  background: rgba(0,194,255,0.07);
+  font-size: 0.6rem; font-family:'JetBrains Mono'; color: var(--accent);
+  white-space: nowrap;
+}
+[data-theme="light"] .file-pill {
+  border-color: rgba(0,98,196,0.3);
+  background: rgba(0,98,196,0.07);
+  color: var(--accent);
+}
+
+/* ─── CONTENT ────────────────────────────────────────── */
+.content { flex:1; overflow-y:auto; padding:16px 18px; min-width:0; }
+
+.section { display:none; animation:fadeUp 0.2s ease; }
+.section.active { display:block; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+.sec-heading {
+  display:flex; align-items:center; gap:8px;
+  font-size:0.6rem; font-weight:600; letter-spacing:2px;
+  text-transform:uppercase; color:var(--text-muted);
+  margin-bottom:14px; padding-bottom:9px;
+  border-bottom:1px solid var(--border);
+}
+.sec-accent { color:var(--accent); font-size:0.8rem; }
+
+/* ─── KPI CARDS ──────────────────────────────────────── */
+.kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+
+.kpi-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:13px; padding:15px 16px;
+  position:relative; overflow:hidden;
+  transition:border-color 0.18s, transform 0.18s;
+}
+.kpi-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+.kpi-card::after {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  opacity:0; transition:opacity 0.18s;
+}
+.kpi-card:hover::after { opacity:1; }
+
+.kpi-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+.kpi-label { font-size:0.6rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); }
+.kpi-icon  { font-size:1rem; opacity:0.6; }
+.kpi-val   { font-size:1.65rem; font-weight:700; font-family:'JetBrains Mono'; line-height:1; color:var(--text); }
+.kpi-unit  { font-size:0.7rem; color:var(--text-dim); margin-left:3px; }
+.kpi-sub   { font-size:0.63rem; color:var(--text-muted); margin-top:5px; }
+
+/* ─── CHART CARD ─────────────────────────────────────── */
+.chart-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:13px; padding:16px; margin-bottom:16px;
+}
+.chart-row {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.chart-title { font-size:0.8rem; font-weight:600; color:var(--text); }
+.chart-sub   { font-size:0.66rem; color:var(--text-muted); margin-top:2px; }
+.chart-ctrls { display:flex; gap:7px; margin-left:auto; flex-wrap:wrap; }
+
+.chip-btn {
+  padding:5px 10px; border-radius:6px;
+  border:1px solid var(--border); background:var(--surface2);
+  color:var(--text-dim); font-size:0.67rem; font-family:'Oxanium';
+  cursor:pointer; transition:all 0.14s; white-space:nowrap;
+}
+.chip-btn:hover,.chip-btn.on {
+  border-color:var(--accent); color:var(--accent);
+  background:rgba(0,194,255,0.05);
+}
+
+.clean-sel {
+  padding:5px 8px; border-radius:6px;
+  border:1px solid var(--border); background:var(--surface2);
+  color:var(--text); font-size:0.7rem; font-family:'Oxanium';
+  outline:none; cursor:pointer; max-width:175px;
+}
+.clean-sel option { background:var(--surface); color:var(--text); }
+
+/* ─── TABLE ──────────────────────────────────────────── */
+.tbl-card { background:var(--surface); border:1px solid var(--border); border-radius:13px; overflow:hidden; }
+.tbl-bar {
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+  padding:11px 15px; border-bottom:1px solid var(--border);
+}
+.tbl-title { font-size:0.8rem; font-weight:600; color:var(--text); }
+.count-badge {
+  padding:2px 7px; border-radius:20px;
+  background:rgba(0,194,255,0.1); color:var(--accent);
+  font-size:0.6rem; font-family:'JetBrains Mono';
+}
+[data-theme="light"] .count-badge { background:rgba(0,98,196,0.1); }
+
+.tbl-search {
+  padding:5px 10px; border-radius:7px;
+  border:1px solid var(--border); background:var(--surface2);
+  color:var(--text); font-size:0.7rem; font-family:'Oxanium';
+  outline:none; width:195px; margin-left:auto;
+}
+
+.tbl-scroll { overflow:auto; max-height:54vh; }
+
+table { width:100%; border-collapse:collapse; }
+thead tr {
+  border-bottom:1px solid var(--border);
+  position:sticky; top:0; background:var(--surface); z-index:1;
+}
+thead th {
+  padding:8px 13px; text-align:left;
+  font-size:0.6rem; font-weight:600; letter-spacing:0.5px;
+  text-transform:uppercase; color:var(--text-muted);
+}
+tbody tr { border-bottom:1px solid var(--border); transition:background 0.11s; }
+[data-theme="dark"] tbody tr { border-bottom-color:rgba(255,255,255,0.025); }
+[data-theme="light"] tbody tr { border-bottom-color:rgba(0,0,0,0.04); }
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:var(--surface2); }
+tbody td { padding:8px 13px; font-size:0.74rem; font-family:'JetBrains Mono'; }
+
+.td-name  { font-family:'Oxanium'; font-weight:500; color:var(--text); }
+.td-val   { color:var(--accent2); }
+.td-dim   { color:var(--text-dim); }
+.td-muted { color:var(--text-muted); }
+
+.row-btn {
+  padding:3px 8px; border-radius:5px;
+  border:1px solid var(--border); background:transparent;
+  color:var(--text-dim); font-size:0.6rem; font-family:'Oxanium';
+  cursor:pointer; transition:all 0.12s; white-space:nowrap;
+}
+.row-btn:hover,.row-btn.on {
+  border-color:var(--accent); color:var(--accent);
+  background:rgba(0,194,255,0.05);
+}
+
+/* ─── MULTI-PLOT ─────────────────────────────────────── */
+.mp-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+
+.mp-panel {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:13px; padding:13px;
+  /* overflow hidden is critical — prevents Plotly from escaping its container */
+  overflow:hidden;
+}
+.mp-panel-top { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+
+/* The wrapper enforces exact pixel dimensions Plotly will read */
+.mp-wrap {
+  width:100%; height:210px;
+  position:relative; overflow:hidden;
+}
+/* Plotly renders its root div as a child — clamp it */
+.mp-wrap > div {
+  position:absolute !important;
+  top:0 !important; left:0 !important;
+  width:100% !important; height:100% !important;
+}
+
+/* ─── FAULTS ─────────────────────────────────────────── */
+.fault-sev {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 7px; border-radius:4px;
+  font-size:0.6rem; font-weight:600; font-family:'Oxanium'; white-space:nowrap;
+}
+.fault-sev.warn { background:rgba(255,183,0,0.13); color:var(--warn); }
+.fault-sev.crit { background:rgba(255,77,109,0.13); color:var(--danger); }
+
+/* ─── EXPORT ─────────────────────────────────────────── */
+.exp-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+.exp-card { background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:18px; }
+.exp-title { font-size:0.86rem; font-weight:600; margin-bottom:5px; color:var(--text); }
+.exp-desc  { font-size:0.7rem; color:var(--text-muted); margin-bottom:13px; line-height:1.55; }
+.exp-field { margin-bottom:11px; }
+.exp-field > label:first-child { display:block; font-size:0.62rem; color:var(--text-muted); margin-bottom:4px; }
+.exp-input {
+  padding:6px 10px; border-radius:7px;
+  border:1px solid var(--border); background:var(--surface2);
+  color:var(--text); font-size:0.7rem; font-family:'Oxanium';
+  outline:none; width:100%;
+}
+.chk-row { display:flex; align-items:center; gap:6px; margin-top:5px; font-size:0.7rem; cursor:pointer; color:var(--text-dim); }
+.exp-btn {
+  margin-top:13px; padding:8px 18px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none; border-radius:7px; color:#fff;
+  font-weight:700; font-size:0.74rem; font-family:'Oxanium';
+  letter-spacing:0.4px; cursor:pointer; transition:all 0.16s;
+}
+.exp-btn:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 13px rgba(0,194,255,0.22); }
+
+/* ─── EMPTY STATE ────────────────────────────────────── */
+.empty {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; padding:46px 16px;
+  color:var(--text-muted); text-align:center;
+}
+.empty-ico { font-size:2.2rem; margin-bottom:9px; opacity:0.22; }
+.empty-txt { font-size:0.78rem; }
+
+/* ─── SCROLLBARS ─────────────────────────────────────── */
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:10px; }
+</style>
+</head>
+<body data-theme="dark">
+
+<!-- ═══ SIDEBAR ══════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="logo-row">
+    <div class="logo-icon">⚡</div>
+    <span class="logo-name">EVScope</span>
+    <span class="logo-ver">v2.1</span>
+  </div>
+
+  <div class="nav-group-label">Analytics</div>
+  <div class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard',this)">Dashboard</div>
+  <div class="nav-item"        id="nav-signals"   onclick="showSection('signals',this)">Signal Viewer</div>
+  <div class="nav-item"        id="nav-multiplot" onclick="showSection('multiplot',this)">Multi-Plot</div>
+
+  <div class="nav-group-label">Diagnostics</div>
+  <div class="nav-item" id="nav-faults" onclick="showSection('faults',this)">
+    Fault Decoder
+    <span class="nav-badge" id="faultBadge" style="display:none">0</span>
+  </div>
+
+  <div class="nav-group-label">Data</div>
+  <div class="nav-item" id="nav-export" onclick="showSection('export',this)">Export</div>
+
+  <div class="sidebar-foot">
+    EVScope Analytics Platform<br>
+    Vehicle Spy Alternative · CAN
+  </div>
+</aside>
+
+<!-- ═══ APP SHELL ══════════════════════════════════════════ -->
+<div class="app-shell">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <span class="topbar-title" id="topbarTitle">Dashboard</span>
+    <div class="topbar-sep"></div>
+
+    <label class="file-btn" id="dbcBtnWrap">
+      ⬡ <span id="dbcLabel">Load DBC / DBF</span>
+      <input type="file" id="dbInput" hidden multiple accept=".dbc,.dbf" onchange="onDBCLoaded(this)">
+    </label>
+
+    <!-- multiple attribute → user can pick several .asc/.log files at once -->
+    <label class="file-btn" id="logBtnWrap">
+      ≡ <span id="logLabel">Load ASC / Log (multi)</span>
+      <input type="file" id="logInput" hidden multiple accept=".asc,.log" onchange="onLogLoaded(this)">
+    </label>
+
+    <button class="parse-btn" onclick="runAnalysis()">▶ Parse &amp; Analyze</button>
+    <span class="status-pill" id="statusPill">Standby</span>
+    <button class="theme-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+  </header>
+
+  <!-- LOADED FILES STRIP -->
+  <div class="files-strip" id="filesStrip">
+    <span class="files-strip-label">Loaded:</span>
+    <span id="filesPillsDB"></span>
+    <span id="filesPillsLog"></span>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ══ DASHBOARD ══════════════════════════════════ -->
+    <section class="section active" id="sec-dashboard">
+      <div class="sec-heading"><span class="sec-accent">◈</span> EV System Overview</div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Battery SOC</span><span class="kpi-icon">🔋</span></div>
+          <div><span class="kpi-val" id="kpi-soc">—</span><span class="kpi-unit">%</span></div>
+          <div class="kpi-sub" id="kpi-soc-sig">Awaiting data</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Pack Voltage</span><span class="kpi-icon">⚡</span></div>
+          <div><span class="kpi-val" id="kpi-volt">—</span><span class="kpi-unit">V</span></div>
+          <div class="kpi-sub" id="kpi-volt-sig">Awaiting data</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Max Temperature</span><span class="kpi-icon">🌡</span></div>
+          <div><span class="kpi-val" id="kpi-temp">—</span><span class="kpi-unit">°C</span></div>
+          <div class="kpi-sub" id="kpi-temp-sig">Awaiting data</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Charge Power</span><span class="kpi-icon">⚡</span></div>
+          <div><span class="kpi-val" id="kpi-power">—</span><span class="kpi-unit">kW</span></div>
+          <div class="kpi-sub" id="kpi-power-sig">Awaiting data</div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-row">
+          <div>
+            <div class="chart-title">Signal Telemetry</div>
+            <div class="chart-sub" id="dashSubtitle">Select up to 3 signals to visualize</div>
+          </div>
+          <div class="chart-ctrls">
+            <select id="dashSig1" class="clean-sel" onchange="updateDashPlot()"><option value="">— Signal 1 —</option></select>
+            <select id="dashSig2" class="clean-sel" onchange="updateDashPlot()"><option value="">— Signal 2 —</option></select>
+            <select id="dashSig3" class="clean-sel" onchange="updateDashPlot()"><option value="">— Signal 3 —</option></select>
+            <button class="chip-btn" id="fillToggle"    onclick="toggleFill(this)">Fill</button>
+            <button class="chip-btn" id="markersToggle" onclick="toggleMarkers(this)">Markers</button>
+          </div>
+        </div>
+        <div id="dashPlot" style="height:330px;"></div>
+      </div>
+    </section>
+
+    <!-- ══ SIGNALS ════════════════════════════════════ -->
+    <section class="section" id="sec-signals">
+      <div class="sec-heading"><span class="sec-accent">◈</span> Signal Discovery &amp; Statistics</div>
+      <div class="tbl-card">
+        <div class="tbl-bar">
+          <span class="tbl-title">Decoded Signals</span>
+          <span class="count-badge" id="sigCountBadge">0 signals</span>
+          <button class="chip-btn" onclick="selectAllSigs()">Select All</button>
+          <button class="chip-btn" onclick="clearSigSel()">Clear</button>
+          <button class="chip-btn on" onclick="plotSelected()">Plot Selected →</button>
+          <input type="text" class="tbl-search" id="sigSearch" placeholder="🔍  Search signals…" oninput="renderSigTable()">
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Plot</th><th>Signal Name</th><th>Last Value</th>
+                <th>Min</th><th>Max</th><th>Average</th><th>Std Dev</th><th>Samples</th>
+              </tr>
+            </thead>
+            <tbody id="sigTableBody">
+              <tr><td colspan="8"><div class="empty"><div class="empty-ico">≋</div><div class="empty-txt">Load &amp; parse data to see signals</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ MULTI-PLOT ══════════════════════════════════ -->
+    <section class="section" id="sec-multiplot">
+      <div class="sec-heading"><span class="sec-accent">◈</span> Multi-Plot Workspace</div>
+      <div class="mp-grid" id="mpGrid">
+        <!-- injected by JS on load -->
+      </div>
+    </section>
+
+    <!-- ══ FAULTS ══════════════════════════════════════ -->
+    <section class="section" id="sec-faults">
+      <div class="sec-heading"><span class="sec-accent">◈</span> Fault &amp; Anomaly Detection</div>
+      <div class="tbl-card">
+        <div class="tbl-bar">
+          <span class="tbl-title">Detected Anomalies</span>
+          <span class="count-badge" id="faultCountBadge">0 faults</span>
+          <button class="chip-btn" style="margin-left:auto;" onclick="runFaultDetection()">↺ Re-scan</button>
+          <button class="chip-btn" onclick="exportFaultCSV()">⬇ Export Faults</button>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead>
+              <tr><th>Severity</th><th>Signal</th><th>Condition</th><th>Value</th><th>Timestamp (s)</th></tr>
+            </thead>
+            <tbody id="faultTableBody">
+              <tr><td colspan="5"><div class="empty"><div class="empty-ico">✓</div><div class="empty-txt">Run analysis first</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ EXPORT ══════════════════════════════════════ -->
+    <section class="section" id="sec-export">
+      <div class="sec-heading"><span class="sec-accent">◈</span> Data Export</div>
+      <div class="exp-grid">
+        <div class="exp-card">
+          <div class="exp-title">Export to CSV</div>
+          <div class="exp-desc">Export decoded signal data as CSV for Excel, MATLAB, Python or other tools.</div>
+          <div class="exp-field">
+            <label>SIGNAL FILTER (blank = all)</label>
+            <input class="exp-input" id="expFilter" placeholder="e.g. BattVolt, Temp…">
+          </div>
+          <div class="exp-field">
+            <label>OPTIONS</label>
+            <label class="chk-row"><input type="checkbox" id="expTS" checked> Include timestamp column</label>
+            <label class="chk-row"><input type="checkbox" id="expStats"> Append summary statistics</label>
+          </div>
+          <button class="exp-btn" onclick="exportCSV()">⬇ Download CSV</button>
+        </div>
+        <div class="exp-card">
+          <div class="exp-title">Export Plot as PNG</div>
+          <div class="exp-desc">Save any chart to a high-resolution PNG for reports or documentation.</div>
+          <div class="exp-field">
+            <label>SELECT PLOT</label>
+            <select id="expPlotSel" class="exp-input" style="cursor:pointer;">
+              <option value="dashPlot">Dashboard — Telemetry</option>
+              <option value="mpPlot1">Multi-Plot — Panel 1</option>
+              <option value="mpPlot2">Multi-Plot — Panel 2</option>
+              <option value="mpPlot3">Multi-Plot — Panel 3</option>
+              <option value="mpPlot4">Multi-Plot — Panel 4</option>
+            </select>
+          </div>
+          <div class="exp-field">
+            <label>RESOLUTION</label>
+            <select id="expRes" class="exp-input" style="cursor:pointer;">
+              <option value="1600,800">1600 × 800 (HD)</option>
+              <option value="2400,1200">2400 × 1200 (2K)</option>
+              <option value="3200,1600">3200 × 1600 (4K)</option>
+            </select>
+          </div>
+          <button class="exp-btn" onclick="exportPNG()">🖼 Download PNG</button>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /content -->
+</div><!-- /app-shell -->
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<script>
+// ================================================================
+//  STATE
+// ================================================================
+let database      = new Map();
+let processedData = [];
+let allSignals    = [];
+let selectedSigs  = new Set();
+let faults        = [];
+let isDark        = true;
+let useFill       = false;
+let useMarkers    = false;
+
+// ================================================================
+//  THEME
+// ================================================================
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.getElementById('themeToggle').textContent = isDark ? '🌙' : '☀️';
+  setTimeout(() => { updateDashPlot(); renderMultiPlot(); }, 80);
+}
+
+// ================================================================
+//  NAVIGATION
+// ================================================================
+const TITLES = {
+  dashboard:'Dashboard', signals:'Signal Viewer',
+  multiplot:'Multi-Plot', faults:'Fault Decoder', export:'Export'
+};
+function showSection(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('topbarTitle').textContent = TITLES[id] || id;
+  if (id === 'multiplot') setTimeout(renderMultiPlot, 100);
+  if (id === 'faults')    runFaultDetection();
+}
+
+// ================================================================
+//  FILE INPUTS
+// ================================================================
+function onDBCLoaded(inp) {
+  const n = inp.files.length;
+  document.getElementById('dbcLabel').textContent = `${n} DBC loaded`;
+  document.getElementById('dbcBtnWrap').classList.add('loaded');
+  updateFilesStrip();
+}
+function onLogLoaded(inp) {
+  const n = inp.files.length;
+  document.getElementById('logLabel').textContent = `${n} log file${n>1?'s':''} loaded`;
+  document.getElementById('logBtnWrap').classList.add('loaded');
+  updateFilesStrip();
+}
+
+function updateFilesStrip() {
+  const strip   = document.getElementById('filesStrip');
+  const dbFiles  = document.getElementById('dbInput').files;
+  const logFiles = document.getElementById('logInput').files;
+  if (!dbFiles.length && !logFiles.length) { strip.classList.remove('visible'); return; }
+  strip.classList.add('visible');
+  document.getElementById('filesPillsDB').innerHTML  =
+    [...dbFiles].map(f  => `<span class="file-pill">⬡ ${f.name}</span>`).join('');
+  document.getElementById('filesPillsLog').innerHTML =
+    [...logFiles].map(f => `<span class="file-pill">≡ ${f.name}</span>`).join('');
+}
+
+// ================================================================
+//  STATUS
+// ================================================================
+function setStatus(msg, cls='') {
+  const p = document.getElementById('statusPill');
+  p.textContent = msg;
+  p.className = 'status-pill' + (cls ? ' '+cls : '');
+}
+
+// ================================================================
+//  CHUNKED FILE READER  — handles files of any size (300 MB+)
+// ================================================================
+async function readFileLines(file, onLine) {
+  const CHUNK = 4 * 1024 * 1024; // 4 MB per chunk
+  let offset = 0;
+  let leftover = '';
+  while (offset < file.size) {
+    const text = await file.slice(offset, offset + CHUNK).text();
+    const combined = leftover + text;
+    const lines = combined.split(/\r?\n/);
+    leftover = lines.pop();            // keep incomplete last line for next chunk
+    for (const line of lines) onLine(line);
+    offset += CHUNK;
+    // yield to browser UI thread every chunk so page stays responsive
+    await new Promise(r => setTimeout(r, 0));
+  }
+  if (leftover) onLine(leftover);      // flush final line
+}
+
+// ================================================================
+//  MAIN ANALYSIS
+// ================================================================
+async function runAnalysis() {
+  const dbFiles  = document.getElementById('dbInput').files;
+  const logFiles = document.getElementById('logInput').files;
+  if (!dbFiles.length || !logFiles.length) {
+    alert('Please load at least one DBC/DBF and one or more ASC/Log files.');
+    return;
+  }
+  setStatus('Processing…', 'busy');
+  database.clear();
+  let frames = [];
+  try {
+    for (const f of dbFiles) {
+      const txt = await f.text();
+      const parsed = f.name.toLowerCase().endsWith('.dbf') ? parseDBF(txt) : parseDBC(txt);
+      parsed.forEach((v,k) => database.set(k,v));
+    }
+    for (const f of logFiles) {
+      setStatus(`Reading ${f.name} (${(f.size/1024/1024).toFixed(0)} MB)…`, 'busy');
+      let fileFrameCount = 0;
+      await readFileLines(f, line => {
+        const parts  = line.trim().split(/\s+/);
+        const dirIdx = parts.findIndex(p => /^rx$/i.test(p) || /^tx$/i.test(p));
+        if (dirIdx === -1) return;
+        try {
+          let ts, id, data;
+          if (parts[0].includes(':')) {
+            const p = parts[0].split(':');
+            ts   = (parseInt(p[0])*3600)+(parseInt(p[1])*60)+parseInt(p[2])+(parseInt(p[3])/10000);
+            id   = parseInt(parts[dirIdx+2].replace('0x',''), 16);
+            data = parts.slice(dirIdx+5).map(x=>parseInt(x,16)).filter(n=>!isNaN(n));
+          } else {
+            ts   = parseFloat(parts[0]);
+            id   = parseInt(parts[2].replace('x',''), 16);
+            const dlcIdx = parts.findIndex((p,i)=>i>dirIdx&&/^\d$/.test(p));
+            data = parts.slice(dlcIdx+1).map(x=>parseInt(x,16)).filter(n=>!isNaN(n));
+          }
+          if (!isNaN(ts) && !isNaN(id)) {
+            frames.push({ ts, id: id & 0x1FFFFFFF, data });
+            fileFrameCount++;
+          }
+        } catch(e) {}
+      });
+      setStatus(`Parsed ${fileFrameCount.toLocaleString()} frames from ${f.name}…`, 'busy');
+    }
+    frames.sort((a,b) => a.ts - b.ts);
+    const decoded = decodeFrames(frames);
+    processedData = timeSync(decoded);
+
+    const sigSet = new Set();
+    decoded.forEach(d => Object.keys(d.sigs).forEach(s => sigSet.add(s)));
+    allSignals = Array.from(sigSet).sort();
+
+    populateSelectors();
+    renderSigTable();
+    updateKPIs();
+    initMultiPlotPanels();
+    runFaultDetection();
+
+    document.getElementById('sigCountBadge').textContent = allSignals.length + ' signals';
+    if (allSignals[0]) updateDashPlot();
+    setStatus(`Ready · ${allSignals.length} signals · ${logFiles.length} log(s)`, 'ok');
+  } catch(e) {
+    setStatus('Error: ' + e.message, 'err');
+    console.error(e);
+  }
+}
+
+// ================================================================
+//  PARSERS  — original logic, unchanged
+// ================================================================
+function parseHeuristicLog(content) {
+  const frames = [];
+  for (const line of content.split(/\r?\n/)) {
+    const parts  = line.trim().split(/\s+/);
+    const dirIdx = parts.findIndex(p => /^rx$/i.test(p) || /^tx$/i.test(p));
+    if (dirIdx === -1) continue;
+    try {
+      let ts, id, data;
+      if (parts[0].includes(':')) {
+        const p = parts[0].split(':');
+        ts   = (parseInt(p[0])*3600)+(parseInt(p[1])*60)+parseInt(p[2])+(parseInt(p[3])/10000);
+        id   = parseInt(parts[dirIdx+2].replace('0x',''), 16);
+        data = parts.slice(dirIdx+5).map(x=>parseInt(x,16)).filter(n=>!isNaN(n));
+      } else {
+        ts   = parseFloat(parts[0]);
+        id   = parseInt(parts[2].replace('x',''), 16);
+        const dlcIdx = parts.findIndex((p,i)=>i>dirIdx&&/^\d$/.test(p));
+        data = parts.slice(dlcIdx+1).map(x=>parseInt(x,16)).filter(n=>!isNaN(n));
+      }
+      if (!isNaN(ts)&&!isNaN(id)) frames.push({ ts, id:id&0x1FFFFFFF, data });
+    } catch(e) {}
+  }
+  return frames;
+}
+
+function parseDBC(text) {
+  const map=new Map(); let cur=null;
+  text.split('\n').forEach(l=>{
+    const t=l.trim();
+    if(t.startsWith('BO_ ')){
+      const m=t.match(/^BO_\s+(\d+)\s+(\w+):/);
+      if(m) map.set(parseInt(m[1])&0x1FFFFFFF, cur={signals:[]});
+    }else if(t.startsWith('SG_ ')&&cur){
+      const m=t.match(/^SG_\s+(\w+)\s+.*:\s+(\d+)\|(\d+)@([01])([+-])\s*\(([^,]+),([^)]+)\)/);
+      if(m) cur.signals.push({name:m[1],start:parseInt(m[2]),len:parseInt(m[3]),
+        isIntel:m[4]==='1',isSigned:m[5]==='-',scale:parseFloat(m[6]),offset:parseFloat(m[7])});
+    }
+  });
+  return map;
+}
+
+function parseDBF(text) {
+  const map=new Map(); let cur=null;
+  text.split('\n').forEach(l=>{
+    const t=l.trim();
+    if(t.toLowerCase().startsWith('message=')){
+      const p=t.split(',');
+      map.set(parseInt(p[1].replace('0x',''),16)&0x1FFFFFFF, cur={signals:[]});
+    }else if(t.toLowerCase().startsWith('signal=')&&cur){
+      const p=t.split(',');
+      cur.signals.push({name:p[0].split('=')[1],start:parseInt(p[1]),len:parseInt(p[2]),
+        isIntel:true,scale:parseFloat(p[5])||1,offset:parseFloat(p[6])||0});
+    }
+  });
+  return map;
+}
+
+function decodeFrames(frames) {
+  return frames.map(f=>{
+    const db=database.get(f.id); if(!db) return null;
+    const sigs={};
+    db.signals.forEach(s=>{
+      let val=0;
+      if(s.isIntel){
+        for(let i=0;i<s.len;i++){const bit=s.start+i; if((f.data[Math.floor(bit/8)]>>(bit%8))&1) val|=(1<<i);}
+      }else{
+        for(let i=0;i<s.len;i++){
+          const bit=(Math.floor(s.start/8)*8)+(7-(s.start%8))+i;
+          const pos=(Math.floor(bit/8)*8)+(7-(bit%8));
+          if((f.data[Math.floor(pos/8)]>>(pos%8))&1) val|=(1<<(s.len-1-i));
+        }
+      }
+      if(s.isSigned&&(val&(1<<(s.len-1)))) val-=(1<<s.len);
+      sigs[s.name]=val*s.scale+s.offset;
+    });
+    return {ts:f.ts,sigs};
+  }).filter(x=>x);
+}
+
+function timeSync(decoded) {
+  const rows=[]; let state={};
+  decoded.forEach(d=>{Object.assign(state,d.sigs); rows.push({t:d.ts,...state});});
+  return rows;
+}
+
+// ================================================================
+//  EV KPIs
+// ================================================================
+const KPI_PATS = {
+  soc:   ['soc','stateofcharge','batterysoc','batt_soc','soc_pct','bms_soc'],
+  volt:  ['packvolt','battvolt','batteryvoltage','hvvolt','voltage','pack_volt','batt_volt','dcbusvoltage'],
+  temp:  ['temp','temperature','celltemp','packtemp','maxtemp','thermal','bms_temp'],
+  power: ['chargepower','chargepwr','chgpwr','chargingpower','acpower','dcpower','kw']
+};
+function matchKPI(pats) {
+  const lo=pats.map(p=>p.toLowerCase());
+  return allSignals.find(s=>lo.some(p=>s.toLowerCase().includes(p)))||null;
+}
+function sigStats(sig) {
+  const vals=processedData.map(r=>r[sig]).filter(v=>v!==undefined&&!isNaN(v));
+  if(!vals.length) return null;
+  const n=vals.length;
+  let sum=0, mn=vals[0], mx=vals[0];
+  for(let i=0;i<n;i++){
+    const v=vals[i]; sum+=v;
+    if(v<mn) mn=v;
+    if(v>mx) mx=v;
+  }
+  const avg=sum/n;
+  let varSum=0;
+  for(let i=0;i<n;i++) varSum+=(vals[i]-avg)**2;
+  const std=Math.sqrt(varSum/n);
+  return {last:vals[n-1],min:mn,max:mx,avg,std,count:n};
+}
+function updateKPIs() {
+  const map={soc:'kpi-soc',volt:'kpi-volt',temp:'kpi-temp',power:'kpi-power'};
+  Object.entries(KPI_PATS).forEach(([key,pats])=>{
+    const sig=matchKPI(pats);
+    const ve=document.getElementById(map[key]), se=document.getElementById(map[key]+'-sig');
+    if(sig){const st=sigStats(sig); ve.textContent=st?st.last.toFixed(1):'—'; se.textContent=sig;}
+    else{ve.textContent='—'; se.textContent='No signal matched';}
+  });
+}
+
+// ================================================================
+//  SELECTORS
+// ================================================================
+function populateSelectors() {
+  const opts='<option value="">— None —</option>'+
+    allSignals.map(s=>`<option value="${s}">${s}</option>`).join('');
+  ['dashSig1','dashSig2','dashSig3'].forEach((id,i)=>{
+    const el=document.getElementById(id); el.innerHTML=opts;
+    if(allSignals[i]) el.value=allSignals[i];
+  });
+}
+
+// ================================================================
+//  PLOT HELPERS
+// ================================================================
+const COLORS=['#00c2ff','#22d3a5','#ffb700','#ff4d6d','#a78bfa','#fb923c','#34d399','#f472b6'];
+
+function plotColors() {
+  return {
+    tc: isDark ? '#7a90aa' : '#3a4f66',
+    gc: isDark ? '#151f2e' : '#dde4ee'
+  };
+}
+
+function baseLayout(extra={}) {
+  const {tc,gc}=plotColors();
+  return {
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{family:'JetBrains Mono',color:tc,size:11},
+    margin:{t:10,b:40,l:58,r:12},
+    hovermode:'x unified',
+    legend:{bgcolor:'rgba(0,0,0,0)',font:{color:tc,size:10}},
+    xaxis:{gridcolor:gc,zeroline:false,tickfont:{color:tc},linecolor:gc},
+    yaxis:{gridcolor:gc,zeroline:false,tickfont:{color:tc},linecolor:gc},
+    ...extra
+  };
+}
+
+// ================================================================
+//  DASHBOARD PLOT
+// ================================================================
+function toggleFill(btn)    { useFill=!useFill;    btn.classList.toggle('on',useFill);    updateDashPlot(); }
+function toggleMarkers(btn) { useMarkers=!useMarkers; btn.classList.toggle('on',useMarkers); updateDashPlot(); }
+
+function updateDashPlot() {
+  const sigs=['dashSig1','dashSig2','dashSig3'].map(id=>document.getElementById(id).value).filter(Boolean);
+  if(!sigs.length||!processedData.length){Plotly.purge('dashPlot');return;}
+  const ts=processedData.map(r=>r.t);
+  const traces=sigs.map((s,i)=>({
+    x:ts, y:processedData.map(r=>r[s]), name:s,
+    mode:useMarkers?'lines+markers':'lines',
+    line:{width:2,color:COLORS[i]},
+    marker:{size:4,color:COLORS[i]},
+    fill:(useFill&&i===0)?'tozeroy':'none',
+    fillcolor:(useFill&&i===0)?'rgba(0,194,255,0.05)':undefined
+  }));
+  document.getElementById('dashSubtitle').textContent=sigs.join(' · ');
+  Plotly.react('dashPlot',traces,baseLayout(),{responsive:true,displaylogo:false});
+}
+
+// ================================================================
+//  SIGNAL TABLE
+// ================================================================
+function renderSigTable() {
+  const q=(document.getElementById('sigSearch').value||'').toLowerCase();
+  const body=document.getElementById('sigTableBody');
+  const list=allSignals.filter(s=>s.toLowerCase().includes(q));
+  if(!list.length){
+    body.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">≋</div><div class="empty-txt">${allSignals.length?'No match':'Load & parse data first'}</div></div></td></tr>`;
+    return;
+  }
+  body.innerHTML=list.map(sig=>{
+    const st=sigStats(sig); if(!st) return '';
+    const on=selectedSigs.has(sig);
+    return `<tr>
+      <td><button class="row-btn ${on?'on':''}" onclick="toggleSig('${sig}',this)">${on?'✓ On':'+ Plot'}</button></td>
+      <td class="td-name">${sig}</td>
+      <td class="td-val">${st.last.toFixed(4)}</td>
+      <td class="td-dim">${st.min.toFixed(4)}</td>
+      <td class="td-dim">${st.max.toFixed(4)}</td>
+      <td class="td-dim">${st.avg.toFixed(4)}</td>
+      <td class="td-muted">${st.std.toFixed(4)}</td>
+      <td class="td-muted">${st.count}</td>
+    </tr>`;
+  }).join('');
+}
+function toggleSig(sig,btn){
+  if(selectedSigs.has(sig)){selectedSigs.delete(sig);btn.textContent='+ Plot';btn.classList.remove('on');}
+  else{selectedSigs.add(sig);btn.textContent='✓ On';btn.classList.add('on');}
+}
+function selectAllSigs(){allSignals.forEach(s=>selectedSigs.add(s));renderSigTable();}
+function clearSigSel(){selectedSigs.clear();renderSigTable();}
+function plotSelected(){
+  if(!selectedSigs.size) return;
+  showSection('dashboard',document.getElementById('nav-dashboard'));
+  const sigs=Array.from(selectedSigs);
+  ['dashSig1','dashSig2','dashSig3'].forEach((id,i)=>{document.getElementById(id).value=sigs[i]||'';});
+  updateDashPlot();
+}
+
+// ================================================================
+//  MULTI-PLOT  — overlap fix: explicit px height + purge + newPlot
+// ================================================================
+function initMultiPlotPanels() {
+  const opts='<option value="">— None —</option>'+
+    allSignals.map(s=>`<option value="${s}">${s}</option>`).join('');
+  document.getElementById('mpGrid').innerHTML=[1,2,3,4].map(i=>`
+    <div class="mp-panel">
+      <div class="mp-panel-top">
+        <select id="mpSig${i}" class="clean-sel" style="flex:1;" onchange="renderMpPanel(${i})">
+          ${opts}
+        </select>
+      </div>
+      <div class="mp-wrap" id="mpWrap${i}">
+        <div id="mpPlot${i}"></div>
+      </div>
+    </div>`).join('');
+  allSignals.slice(0,4).forEach((s,i)=>{
+    const el=document.getElementById('mpSig'+(i+1)); if(el) el.value=s;
+  });
+  setTimeout(renderMultiPlot, 120);
+}
+
+function renderMpPanel(i) {
+  // Called individually on select change
+  const sig   = document.getElementById('mpSig'+i)?.value;
+  const plotId= 'mpPlot'+i;
+  const el    = document.getElementById(plotId);
+  if(!el) return;
+
+  Plotly.purge(plotId);   // always purge to prevent stacking
+
+  if(!sig||!processedData.length){
+    el.innerHTML='<div class="empty" style="height:210px;"><div class="empty-ico" style="font-size:1.4rem;">⊞</div><div class="empty-txt">No signal selected</div></div>';
+    return;
+  }
+  const {tc,gc}=plotColors();
+  Plotly.newPlot(plotId,[{
+    x:processedData.map(r=>r.t),
+    y:processedData.map(r=>r[sig]),
+    name:sig, mode:'lines',
+    line:{width:1.8,color:COLORS[(i-1)%COLORS.length]}
+  }],{
+    height:210, width:null,       /* null width → Plotly uses container width */
+    autosize:true,
+    paper_bgcolor:'rgba(0,0,0,0)',
+    plot_bgcolor:'rgba(0,0,0,0)',
+    font:{family:'JetBrains Mono',color:tc,size:10},
+    margin:{t:6,b:34,l:52,r:8},
+    showlegend:false,
+    hovermode:'x unified',
+    xaxis:{gridcolor:gc,zeroline:false,tickfont:{color:tc,size:9}},
+    yaxis:{gridcolor:gc,zeroline:false,tickfont:{color:tc,size:9},
+           title:{text:sig,font:{size:9,color:tc}}}
+  },{responsive:true,displaylogo:false,displayModeBar:false});
+}
+
+function renderMultiPlot(){
+  [1,2,3,4].forEach(i=>renderMpPanel(i));
+}
+
+// ================================================================
+//  FAULT DETECTION
+// ================================================================
+function runFaultDetection(){
+  if(!processedData.length) return;
+  faults=[];
+  allSignals.forEach(sig=>{
+    const vals=processedData.map(r=>({t:r.t,v:r[sig]})).filter(r=>r.v!==undefined&&!isNaN(r.v));
+    if(!vals.length) return;
+    const nums=vals.map(r=>r.v), n=nums.length;
+    let sum=0; for(let i=0;i<n;i++) sum+=nums[i];
+    const avg=sum/n;
+    let varSum=0; for(let i=0;i<n;i++) varSum+=(nums[i]-avg)**2;
+    const std=Math.sqrt(varSum/n);
+    if(std>0) vals.forEach(row=>{
+      const z=Math.abs((row.v-avg)/std);
+      if(z>4) faults.push({sig,condition:`Outlier (Z=${z.toFixed(1)}σ)`,
+        value:row.v.toFixed(3),ts:row.t.toFixed(4),sev:z>6?'crit':'warn'});
+    });
+    if(/fault|error|dtc|warning|alarm|fail/i.test(sig))
+      vals.filter(r=>r.v!==0).forEach(row=>faults.push({sig,condition:'Non-zero fault signal',
+        value:row.v.toFixed(0),ts:row.t.toFixed(4),sev:'crit'}));
+    if(/volt/i.test(sig))
+      vals.filter(r=>r.v>1000||r.v<0).forEach(row=>faults.push({sig,
+        condition:'Voltage out of range (0–1000V)',value:row.v.toFixed(2),ts:row.t.toFixed(4),sev:'crit'}));
+    if(/temp/i.test(sig))
+      vals.filter(r=>r.v>80||r.v<-40).forEach(row=>faults.push({sig,
+        condition:'Temperature out of safe range (-40–80°C)',value:row.v.toFixed(1),
+        ts:row.t.toFixed(4),sev:row.v>80?'crit':'warn'}));
+    if(/soc/i.test(sig))
+      vals.filter(r=>r.v>100||r.v<0).forEach(row=>faults.push({sig,
+        condition:'SOC out of range (0–100%)',value:row.v.toFixed(1),ts:row.t.toFixed(4),sev:'crit'}));
+  });
+  const badge=document.getElementById('faultBadge');
+  badge.textContent=faults.length; badge.style.display=faults.length?'inline':'none';
+  document.getElementById('faultCountBadge').textContent=faults.length+' faults';
+  renderFaultTable();
+}
+
+function renderFaultTable(){
+  const body=document.getElementById('faultTableBody');
+  if(!faults.length){
+    body.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="empty-ico">✓</div><div class="empty-txt">No anomalies detected</div></div></td></tr>`;
+    return;
+  }
+  body.innerHTML=faults.slice(0,500).map(f=>`
+    <tr>
+      <td><span class="fault-sev ${f.sev}">${f.sev==='crit'?'⚠ CRITICAL':'! WARNING'}</span></td>
+      <td class="td-name">${f.sig}</td>
+      <td class="td-dim" style="font-size:0.7rem;">${f.condition}</td>
+      <td class="td-val">${f.value}</td>
+      <td class="td-muted">${f.ts}</td>
+    </tr>`).join('');
+}
+
+// ================================================================
+//  EXPORT
+// ================================================================
+function exportCSV(){
+  if(!processedData.length) return alert('No data loaded yet.');
+  const filter=(document.getElementById('expFilter').value||'').toLowerCase();
+  const inclTS=document.getElementById('expTS').checked;
+  const inclSt=document.getElementById('expStats').checked;
+  let sigs=allSignals; if(filter) sigs=sigs.filter(s=>s.toLowerCase().includes(filter));
+  const header=(inclTS?['timestamp']:[]).concat(sigs).join(',');
+  const rows=processedData.map(r=>(inclTS?[r.t.toFixed(5)]:[])
+    .concat(sigs.map(s=>(r[s]!==undefined&&!isNaN(r[s]))?r[s]:'')).join(','));
+  let csv=header+'\n'+rows.join('\n');
+  if(inclSt){
+    csv+='\n\n# Summary Statistics';
+    sigs.forEach(s=>{const st=sigStats(s);if(st) csv+=`\n# ${s},min=${st.min.toFixed(4)},max=${st.max.toFixed(4)},avg=${st.avg.toFixed(4)},std=${st.std.toFixed(4)},count=${st.count}`;});
+  }
+  dlBlob(csv,'text/csv','evscope_data.csv');
+}
+
+function exportFaultCSV(){
+  if(!faults.length) return alert('No faults detected.');
+  dlBlob('severity,signal,condition,value,timestamp\n'+
+    faults.map(f=>`${f.sev},${f.sig},"${f.condition}",${f.value},${f.ts}`).join('\n'),
+    'text/csv','evscope_faults.csv');
+}
+
+function dlBlob(content,mime,filename){
+  const url=URL.createObjectURL(new Blob([content],{type:mime}));
+  Object.assign(document.createElement('a'),{href:url,download:filename}).click();
+  URL.revokeObjectURL(url);
+}
+
+function exportPNG(){
+  const plotId=document.getElementById('expPlotSel').value;
+  const res=document.getElementById('expRes').value.split(',').map(Number);
+  Plotly.downloadImage(plotId,{format:'png',width:res[0],height:res[1],filename:'evscope_plot'});
+}
+
+// ================================================================
+//  INIT — build empty multi-plot shells on page load
+// ================================================================
+(function init(){
+  document.getElementById('mpGrid').innerHTML=[1,2,3,4].map(i=>`
+    <div class="mp-panel">
+      <div class="mp-panel-top">
+        <select id="mpSig${i}" class="clean-sel" style="flex:1;" onchange="renderMpPanel(${i})">
+          <option value="">— Load data first —</option>
+        </select>
+      </div>
+      <div class="mp-wrap" id="mpWrap${i}">
+        <div id="mpPlot${i}">
+          <div class="empty" style="height:210px;">
+            <div class="empty-ico" style="font-size:1.4rem;">⊞</div>
+            <div class="empty-txt">Panel ${i}</div>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+})();
+</script>
+</body>
+</html>
